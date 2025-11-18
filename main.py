@@ -1,8 +1,13 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import Any, Dict
 
-app = FastAPI()
+from schemas import Lead
+from database import create_document
+
+app = FastAPI(title="Sustainability AI Consulting API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,6 +24,15 @@ def read_root():
 @app.get("/api/hello")
 def hello():
     return {"message": "Hello from the backend API!"}
+
+@app.post("/api/leads")
+def create_lead_endpoint(lead: Lead) -> Dict[str, Any]:
+    """Capture lead submissions for sustainability AI consulting"""
+    try:
+        inserted_id = create_document("lead", lead)
+        return {"status": "success", "id": inserted_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/test")
 def test_database():
@@ -38,7 +52,7 @@ def test_database():
         
         if db is not None:
             response["database"] = "✅ Available"
-            response["database_url"] = "✅ Configured"
+            response["database_url"] = "✅ Set" if os.getenv("DATABASE_URL") else "❌ Not Set"
             response["database_name"] = db.name if hasattr(db, 'name') else "✅ Connected"
             response["connection_status"] = "Connected"
             
@@ -58,7 +72,6 @@ def test_database():
         response["database"] = f"❌ Error: {str(e)[:50]}"
     
     # Check environment variables
-    import os
     response["database_url"] = "✅ Set" if os.getenv("DATABASE_URL") else "❌ Not Set"
     response["database_name"] = "✅ Set" if os.getenv("DATABASE_NAME") else "❌ Not Set"
     
